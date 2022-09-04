@@ -1,0 +1,1 @@
+CreateConVar('gm_toolgun_effects', 1, FCVAR_ARCHIVE, 'toolgun_sound', 0, 1)
