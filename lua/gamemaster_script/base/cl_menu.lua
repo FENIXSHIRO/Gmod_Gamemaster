@@ -41,6 +41,7 @@ function OpenSettingsMenu()
     local MainWide = ScrW()/1.2
 	local MainTall = MainWide/1.8
     local AnimSpeed = 0.2
+    local FastAnimSpeed = 0.1
 
     ------------------------------------------------
     --MainPanel
@@ -59,6 +60,9 @@ function OpenSettingsMenu()
     Main.Paint = function( self, w, h )
 		draw.Blurpanel(Main)
 		draw.RoundedBox( rang, 0, 0, w, h, GMASTER.ColorScheme.Background )
+
+        surface.SetDrawColor( 219, 219, 219)
+        surface.DrawLine( w/2, 0, w/2, h )
     end
     
     menuIsActive = true
@@ -83,7 +87,7 @@ function OpenSettingsMenu()
         CLoseMain()
 	end
 	Button_Close.Paint = function( self, w, h )
-        local buuton = ( self:IsHovered() and Color( 187, 34, 34) ) || GMASTER.ColorScheme.Background
+        local buuton = ( self:IsHovered() && Color( 187, 34, 34) ) || GMASTER.ColorScheme.Background
         draw.RoundedBox( rang, 0, 0, w, h, GMASTER.ColorScheme.Background )
         draw.RoundedBox( rang, 1, 1, w-2, h-2, buuton )
 		draw.SimpleText( "✕", "font_base_22",w/2-1, h/2, Color( 225, 225, 225, 225 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
@@ -107,54 +111,126 @@ function OpenSettingsMenu()
     ------------------------------------------------
     --TopMenuBar
     ------------------------------------------------
-    local function TopBarButtonsPaint( self, w, h, text )
-        local bg = (self.Depressed and GMASTER.ColorScheme.Background) or (self:IsHovered() and GMASTER.ColorScheme.Background) or GMASTER.ColorScheme.Background
-
-        --draw.RoundedBoxEx(0, 0, 0, w, h, bg, false, false, false, true)
-        draw.SimpleText( text, "font_base_22",w/2,h/2, Color( 225, 225, 225, 225 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTOM )
-    end
-
     local TopMenuBar = vgui.Create('DPanel', Main)
-	TopMenuBar:SetSize( MainWide, MainTall/15 )
+	TopMenuBar:SetSize( MainWide, MainTall/10 )
 	TopMenuBar:SetPos( 0, 0 )
     TopMenuBar.Paint = function( self, w, h )
 		draw.RoundedBoxEx( rang, 0, 0, w, h-3, GMASTER.ColorScheme.Background, true, true, false, false)
         draw.RoundedBox( rang, 0, h-3, w, 3, ColorToneTo(GMASTER.ColorScheme.Background, -2))
     end
 
-    --Top menu bar button sizes
-    TMB_Wide = 200
-    TMB_Tall = TopMenuBar:GetTall()-10
+    --Top menu bar buttons
 
-    --FeaturesButton | CENTER BUTON |
-    local TMB_Button_Features = vgui.Create( "DButton", TopMenuBar )
-    TMB_Button_Features:SetSize( TMB_Wide, TMB_Tall )
-    TMB_Button_Features:SetPos( MainWide/2 - TMB_Wide/2, 5)
-    TMB_Button_Features:SetText('')
-    TMB_Button_Features.Paint = function( self, w, h )
-        TopBarButtonsPaint( self, w, h, "Features" )
+    local TMB_Buttons = {}
+
+    local function CreateTMBButton( text, isDefault , doOnClick )
+
+        local TMB_Button = vgui.Create( "DButton", TopMenuBar )
+        table.insert( TMB_Buttons, TMB_Button )
+
+        TMB_Button.Active = isDefault
+        local TMB_Tall = TopMenuBar:GetTall()/2
+        surface.SetFont( "font_base_30" )
+        local TMB_Wide = select( 1, surface.GetTextSize( TMB_Button.Active && text || !TMB_Button.Active && TMB_Tall ) ) + 20 || 120
+        TMB_Button:SetSize( TMB_Wide, TMB_Tall )
+
+        local activeXPos = MainWide/2 - TMB_Button:GetWide()/2
+        TMB_Button:SetPos( activeXPos, TopMenuBar:GetTall() - TMB_Tall - 3 )
+
+        TMB_Button:SetText('')
+
+        TMB_Button.Paint = function( self, w, h )
+            local bg = (self.Depressed && GMASTER.ColorScheme.Background) || (self:IsHovered() && GMASTER.ColorScheme.Background) || GMASTER.ColorScheme.Background
+            
+            draw.RoundedBox( rang, 0, 0, w, h, GMASTER.ColorScheme.Background )
+
+            if self.Active then
+                draw.SimpleText( text, "font_base_30",w/2,h-2, Color( 225, 225, 225, 225 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
+                surface.SetDrawColor( 219, 219, 219)
+                surface.DrawLine( 0, h/4, 0, h )
+                surface.DrawLine( w-1, h/4, w-1, h )
+            else
+                draw.SimpleText( text[1], "font_base_26",w/2,h-2, Color( 225, 225, 225, 225 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
+                surface.SetDrawColor( 219, 219, 219)
+                surface.DrawLine( 0, h/2, 0, h )
+                surface.DrawLine( w-1, h/2, w-1, h )
+            end
+        end
+
+        TMB_Button.ResizeWideValue = TMB_Button:GetWide()
+
+        TMB_Button.Relativity = function( smooth )
+            if !table.IsEmpty( TMB_Buttons ) then
+                local prevV = NULL
+                for k, v in ipairs( TMB_Buttons ) do
+                    if (v == TMB_Button && k > 1 && smooth) then
+                        TMB_Button:MoveTo( prevV:GetX() + prevV.ResizeWideValue + 5, TopMenuBar:GetTall() - TMB_Tall - 3, AnimSpeed, 0, -1 )
+                    elseif (v == TMB_Button && k > 1) then
+                        TMB_Button:SetPos( prevV:GetX() + prevV.ResizeWideValue + 5, TopMenuBar:GetTall() - TMB_Tall - 3)
+                    end
+                    prevV = v
+                end
+            end
+        end
+
+        TMB_Button.Relativity()
+
+        function TMB_Button:DoClick()
+            TMB_Button.Active = true
+
+            TMB_Button.ResizeWideValue = 180
+            TMB_Button:SizeTo( TMB_Button.ResizeWideValue, -1, AnimSpeed, 0, -1)
+            TMB_Button.Relativity()
+
+            for k, v in ipairs( TMB_Buttons ) do
+                if v != TMB_Button then
+                    v.Active = false
+                    v.ResizeWideValue = TMB_Tall
+                    v:SizeTo( v.ResizeWideValue, -1, AnimSpeed, 0, -1)
+                    v.Relativity()
+                end
+            end
+
+            for k, v in ipairs( TMB_Buttons ) do
+                if ( v.Active ) then
+                    activeXPos = k - 1 > 0 && (MainWide/2 - (TMB_Tall+5) * (k-1) - v.ResizeWideValue/2) || (MainWide/2 - v.ResizeWideValue/2)
+                    break
+                end
+            end
+            TMB_Button.Relativity()
+
+            TMB_Buttons[1]:SetPos( activeXPos, TopMenuBar:GetTall() - TMB_Tall - 3 )
+
+            for k, v in ipairs( TMB_Buttons ) do
+                v.Relativity()
+            end
+
+            doOnClick()
+        end
+
+    end 
+
+    local function CenterByActive()
+        for k, v in ipairs( TMB_Buttons ) do
+            if ( v.Active ) then
+                activeXPos = k - 1 > 0 && (MainWide/2 - (TMB_Tall+5) * (k-1) - v.ResizeWideValue/2) || (MainWide/2 - v.ResizeWideValue/2)
+                break
+            end
+        end
+
+        TMB_Buttons[1]:SetPos( activeXPos, TopMenuBar:GetTall() - TMB_Tall - 3 )
+
+        for k, v in ipairs( TMB_Buttons ) do
+            v.Relativity()
+        end
     end
 
-    --Spawn Menu
-    local TMB_Button_SpawnMenu = vgui.Create( "DButton", TopMenuBar )
-    TMB_Button_SpawnMenu:SetText('')
-    TMB_Button_SpawnMenu:SetPos( 0, 5)
-    TMB_Button_SpawnMenu:SetSize( TMB_Wide, TMB_Tall )
-    TMB_Button_SpawnMenu:MoveLeftOf( TMB_Button_Features, 5 )
-    TMB_Button_SpawnMenu.Paint = function( self, w, h )
-        TopBarButtonsPaint( self, w, h, "Spawn menu" )
-    end
+    CreateTMBButton( "Spawnmenu", false, function() print("++") end )
+    CreateTMBButton( "Features", true,  function() print("++") end )
+    CreateTMBButton( "Players", false,  function() print("++") end )
+    CreateTMBButton( "Settings", false,  function() print("++") end )
 
-    --GMaster Settings
-    local TMB_Button_GMasterSettings = vgui.Create( "DButton", TopMenuBar )
-    TMB_Button_GMasterSettings:SetText('')
-    TMB_Button_GMasterSettings:SetPos( 0, 5)
-    TMB_Button_GMasterSettings:SetSize( TMB_Wide, TMB_Tall )
-    TMB_Button_GMasterSettings:MoveRightOf( TMB_Button_Features, 5 )
-    TMB_Button_GMasterSettings.Paint = function( self, w, h )
-        TopBarButtonsPaint( self, w, h, "GMaster settings" )
-    end
-
+    CenterByActive()
     
     --DEBUG
     --Button_Close:MoveToFront()
